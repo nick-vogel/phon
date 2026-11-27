@@ -1,0 +1,60 @@
+{
+  "expo": {
+    "name": "Phon",
+    "slug": "phon",
+    "version": "1.0.0",
+    "scheme": "phon",
+    "platforms": ["ios", "android"],
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/images/icon.png",
+    "ios": {
+      "bundleIdentifier": "chat.phon.app",
+      "entitlements": {
+        "com.apple.developer.usernotifications.time-sensitive": true
+      }
+    },
+    "android": {
+      "package": "chat.phon.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "monochromeImage": "./assets/images/adaptive-icon-monochrome.png",
+        "backgroundColor": "#55b3c9"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-web-browser",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#55b3c9"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Phon uses your photos so you can post an image in a channel.",
+          "cameraPermission": "Phon uses your camera so you can take a photo and post it in a channel.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#ffffff",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "dark": {
+            "image": "./assets/images/splash-icon-dark.png",
+            "backgroundColor": "#090b0c"
+          }
+        }
+      ]
+    ]
+  }
+}

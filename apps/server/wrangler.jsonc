@@ -1,0 +1,78 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "phon-server",
+  // `Main Account`, which holds phon.chat and its Email Sending (phon#152). Pinned because Nick's
+  // login reaches two accounts, and a non-interactive wrangler command cannot choose between them.
+  "account_id": "1b265381335cba90d0643b87f2ea035d",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-12",
+  "observability": {
+    "enabled": true
+  },
+  // One directory per church, one channel object per church channel, and one registry (`all`) of
+  // the churches with a connected sync account.
+  "durable_objects": {
+    "bindings": [
+      { "name": "CHURCH_DIRECTORY", "class_name": "ChurchDirectory" },
+      { "name": "CHANNEL", "class_name": "Channel" },
+      { "name": "CHURCH_REGISTRY", "class_name": "ChurchRegistry" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["ChurchDirectory", "Channel"] },
+    { "tag": "v2", "new_sqlite_classes": ["ChurchRegistry"] }
+  ],
+  // Posted images, keyed `<churchId>/<channelId>/<imageId>`. No `remote` key: `wrangler dev` and the
+  // Vitest integration use a local simulation of the bucket, and vitest.config.ts pins it local too.
+  // The bucket must exist on the account before the first deploy.
+  "r2_buckets": [{ "binding": "IMAGES", "bucket_name": "phon-images" }],
+  // Email code sign-in sends from `sign-in@phon.chat`. No `remote` key: `wrangler dev` and the
+  // Vitest integration simulate the binding and send nothing (`wrangler dev` logs the sender, the
+  // recipient, the subject and the path of a saved .eml file, which holds the code). phon#152 turns
+  // on Email Sending for phon.chat before the first deploy.
+  "send_email": [{ "name": "EMAIL" }],
+  // Limits for each caller on the routes answered before sign-in (phon#176, src/caller-limits.ts),
+  // a caller being one IPv4 address or one IPv6 /64. Cloudflare counts each limit approximately
+  // and in each of its locations on its own, and allows a period of only 10 or 60 seconds.
+  // - ANONYMOUS_REQUESTS, 100 a minute over every such route: one email code sign-in takes at most
+  //   4 of them and a Planning Center sign-in 3, so this limit lets about 25 people behind one
+  //   address (a church's Wi-Fi, a carrier's shared address) sign in within the same minute, while
+  //   one caller is held to 6,000 an hour, not unbounded.
+  // - EMAIL_CODE_REQUESTS, 10 `POST /auth/email/code` a minute: each request may spend one of the
+  //   church's 20 Planning Center lookups in 20 seconds (EMAIL_LOOKUPS_PER_PERIOD), so one caller
+  //   can take at most half of a period's lookups and never refuse everyone else's code requests.
+  // - EMAIL_CODE_CHECKS, 1 `POST /auth/email/session` a minute: at most about 60 checks an hour,
+  //   under the church's limit of 100 wrong codes an hour (EMAIL_CODE_MISSES_PER_HOUR), so one
+  //   caller alone cannot keep a church's email code sign-in refused. The cost: a person who
+  //   mistypes a code waits up to a minute to check it again, and people behind one address check
+  //   their codes one a minute.
+  // A namespace_id is an integer that must be unique in the Cloudflare account: confirm that none
+  // of these is used there before the first deploy.
+  "ratelimits": [
+    {
+      "name": "ANONYMOUS_REQUESTS",
+      "namespace_id": "1761",
+      "simple": { "limit": 100, "period": 60 }
+    },
+    {
+      "name": "EMAIL_CODE_REQUESTS",
+      "namespace_id": "1762",
+      "simple": { "limit": 10, "period": 60 }
+    },
+    {
+      "name": "EMAIL_CODE_CHECKS",
+      "namespace_id": "1763",
+      "simple": { "limit": 1, "period": 60 }
+    }
+  ],
+  // The roster sync: every connected church, every 15 minutes.
+  "triggers": { "crons": ["*/15 * * * *"] },
+  // The Planning Center OAuth application (phon#14), the HMAC key of the email sign-in address and
+  // code hashes (phon#162), and the KLIPY API key the GIF search sends (phon#16), which never leaves
+  // the Worker. The deployed values go from phon/prod.env in the secrets repo with
+  // `pnpm secrets:push phon`. Local dev reads them from the environment `pnpm dev:server` builds,
+  // and the root `.env.example` lists them (eng-pipeline#54).
+  "secrets": {
+    "required": ["PCO_CLIENT_ID", "PCO_CLIENT_SECRET", "EMAIL_HASH_KEY", "KLIPY_API_KEY"]
+  }
+}

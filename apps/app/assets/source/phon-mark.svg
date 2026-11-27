@@ -1,0 +1,14 @@
+<!--
+  The Phon mark (phon#251): a speech bubble with a short tail at the lower left. Geometry only, on a
+  1024 x 1024 canvas: every shape fills with currentColor, and the colours come from the theme module
+  when `pnpm --filter @phon/app icons` renders the PNGs under assets/images/ from this file. Edit this
+  file, then run that script; never edit the PNGs by hand.
+
+  The mark sits inside a circle of radius 300 around the centre, so Android's adaptive icon mask
+  (a 66 dp safe zone in 108 dp, radius 313 at this size) never clips it.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <title>Phon</title>
+  <rect x="272" y="292" width="480" height="360" rx="100" fill="currentColor"/>
+  <path d="M 360 610 Q 364 700 330 740 Q 420 722 480 652 Z" fill="currentColor"/>
+</svg>

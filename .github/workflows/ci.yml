@@ -1,0 +1,61 @@
+name: CI
+
+# The commit stage: lint, type check and test, nothing that needs a server, a database or a
+# secret. The build (wrangler deploy --dry-run) stays a local full check.
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+
+# A pull request shares one group per ref, so a newer commit cancels its older check.
+# A push gets a group of its own (the run ID), so no push run cancels or replaces another.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # A push to a branch that already has an open pull request also fires pull_request, so the
+  # push run stands down and the commit is checked once. The first push of a branch, before its
+  # pull request exists, still gets checked.
+  open-pr:
+    name: Look for an open pull request
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      pull-requests: read
+    outputs:
+      exists: ${{ steps.find.outputs.exists }}
+    steps:
+      - id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # A failed lookup counts as no pull request, so the checks run rather than vanish.
+        run: |
+          count=$(gh api "repos/$GITHUB_REPOSITORY/pulls?state=open&head=$GITHUB_REPOSITORY_OWNER:$GITHUB_REF_NAME" --jq length) || count=0
+          if [ "$count" -gt 0 ]; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
+
+  check:
+    name: Lint, type check and test
+    needs: [open-pr]
+    # open-pr is skipped on pull_request, and a skipped need skips its dependents by default.
+    if: ${{ !cancelled() && !failure() && needs.open-pr.outputs.exists != 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          # The job reads only; no step pushes, so no token stays in .git/config for pnpm install.
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test

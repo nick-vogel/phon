@@ -1,0 +1,21 @@
+{
+  "name": "@phon/server",
+  "private": true,
+  "license": "FSL-1.1-ALv2",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p test",
+    "test": "vitest run",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "types": "wrangler types"
+  },
+  "dependencies": {
+    "@phon/api-types": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.8.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0",
+    "wrangler": "^4.161.0"
+  }
+}
